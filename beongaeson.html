@@ -1,0 +1,588 @@
+<title>번개손 챌린지</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: playground board — header with player tag, three game "stations", live ranking board below; play view swaps in a full-width arena. */
+:root{
+  --bg:#E6F2EF; --panel:#FFFFFF; --ink:#1B2A4A; --muted:#5A6B86; --line:#CFE0DC;
+  --accent:#FF7A2F; --accent-ink:#FFFFFF; --arena:#FBFEFD; --good:#1FA463; --bad:#E2394A;
+  --react-wait:#E2394A; --react-go:#1FA463;
+  --display:"Jua","Gowun Dodum",system-ui,sans-serif;
+  --body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --r:18px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111A2A; --panel:#1B263C; --ink:#EEF2FA; --muted:#9AA9C4; --line:#2B3A57;
+  --accent:#FF8F4D; --accent-ink:#1B1206; --arena:#0D1422; --good:#3ACB7E; --bad:#FF5A68;
+  --react-wait:#C93445; --react-go:#1E9C5C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111A2A; --panel:#1B263C; --ink:#EEF2FA; --muted:#9AA9C4; --line:#2B3A57;
+  --accent:#FF8F4D; --accent-ink:#1B1206; --arena:#0D1422; --good:#3ACB7E; --bad:#FF5A68;
+  --react-wait:#C93445; --react-go:#1E9C5C; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.bolt{width:46px;height:46px;border-radius:14px;background:var(--accent);display:grid;place-items:center;transform:rotate(-6deg)}
+.bolt svg{width:26px;height:26px}
+.brand h1{font-size:30px;line-height:1}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.player{display:flex;align-items:center;gap:8px;background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:6px 6px 6px 16px}
+.player label{font-size:13px;color:var(--muted);white-space:nowrap}
+.player input{border:0;background:transparent;font:inherit;font-family:var(--display);font-size:18px;color:var(--ink);width:9em;min-width:0}
+.player input::placeholder{color:var(--muted);opacity:.7}
+
+.stations{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.stations{grid-template-columns:1fr}}
+.station{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:10px;text-align:left;transition:transform .15s,border-color .15s}
+.station:hover{transform:translateY(-3px);border-color:var(--accent)}
+.station .ico{width:54px;height:54px}
+.station h3{font-size:22px}
+.station p{margin:0;color:var(--muted);font-size:14.5px}
+.station .trains{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;letter-spacing:.04em;padding:3px 9px;border-radius:999px;background:var(--bg);color:var(--muted)}
+.station .mybest{margin-top:auto;display:flex;justify-content:space-between;align-items:baseline;border-top:2px dashed var(--line);padding-top:10px;font-size:14px;color:var(--muted)}
+.station .mybest b{font-family:var(--display);font-weight:400;font-size:20px;color:var(--ink)}
+.go{align-self:flex-start;background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;padding:8px 18px;font-family:var(--display);font-size:17px}
+
+.board{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px}
+.board-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+.board-head h2{font-size:24px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:2px solid var(--line);background:transparent;border-radius:999px;padding:5px 13px;font-size:14px}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.note{font-size:13.5px;color:var(--muted);margin:0}
+.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rank li{display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 12px;border-radius:12px;background:var(--bg)}
+.rank li.me{outline:2px solid var(--accent)}
+.rank .pos{font-family:var(--display);font-size:20px;text-align:center}
+.rank li:nth-child(1) .pos{color:#E2A400}.rank li:nth-child(2) .pos{color:#8C9AB0}.rank li:nth-child(3) .pos{color:#C2793F}
+.rank .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .who small{color:var(--muted);margin-left:6px}
+.rank .val{font-family:var(--display);font-size:19px;text-align:right}
+.empty{padding:22px;text-align:center;color:var(--muted);background:var(--bg);border-radius:12px}
+
+/* play view */
+.hud{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;justify-content:space-between}
+.hud .stats{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.stat{display:flex;flex-direction:column;line-height:1.1}
+.stat span{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.stat b{font-family:var(--display);font-weight:400;font-size:24px}
+.hearts{font-size:22px;color:var(--bad);letter-spacing:2px}
+.hearts i{font-style:normal;color:var(--line)}
+.target{display:flex;align-items:center;gap:8px;background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:4px 14px 4px 6px;font-family:var(--display);font-size:18px}
+.target .dot{width:28px;height:28px;border-radius:50%}
+.quit{border:2px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;font-size:14px}
+.arena{position:relative;width:100%;height:min(66vh,600px);min-height:340px;background:var(--arena);border:2px solid var(--line);border-radius:var(--r);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.arena canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;text-align:center;padding:16px}
+.banner div{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:16px 24px;font-family:var(--display);font-size:clamp(22px,5vw,34px);box-shadow:0 10px 30px rgba(0,0,0,.12);animation:pop .35s ease-out}
+.banner small{display:block;font-family:var(--body);font-size:15px;color:var(--muted);margin-top:4px}
+@keyframes pop{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+
+.pad{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;font-family:var(--display);text-align:center;padding:20px;transition:background .08s}
+.pad.idle{background:var(--muted)}.pad.wait{background:var(--react-wait)}.pad.go{background:var(--react-go)}.pad.early{background:#E89A1B}.pad.res{background:#2F7BF5}
+.pad .big{font-size:clamp(34px,8vw,64px);line-height:1.1}
+.pad .small{font-family:var(--body);font-size:17px;opacity:.92}
+.pad .dots{display:flex;gap:8px;margin-top:10px}
+.pad .dots i{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.35)}
+.pad .dots i.on{background:#fff}
+
+.molegrid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:clamp(8px,2vw,18px);padding:clamp(10px,3vw,26px)}
+.hole{position:relative;border:0;background:transparent;padding:0;display:grid;place-items:center;touch-action:none}
+.hole::before{content:"";position:absolute;width:min(86%,150px);aspect-ratio:2.6;bottom:12%;border-radius:50%;background:var(--line)}
+.critter{position:relative;width:min(70%,120px);aspect-ratio:1;border-radius:50%;transform:translateY(30%) scale(0);transition:transform .12s ease-out;pointer-events:none}
+.hole.up .critter{transform:translateY(-4%) scale(1)}
+.critter.star{background:#FFC21A;box-shadow:inset 0 -8px 0 rgba(0,0,0,.12)}
+.critter.star::before,.critter.star::after{content:"";position:absolute;top:36%;width:12%;height:14%;border-radius:50%;background:#1B2A4A}
+.critter.star::before{left:28%}.critter.star::after{right:28%}
+.critter.star i{position:absolute;left:35%;right:35%;top:58%;height:14%;border-bottom:4px solid #1B2A4A;border-radius:0 0 50% 50%}
+.critter.bomb{background:#2A2F3D;box-shadow:inset 0 -8px 0 rgba(0,0,0,.25)}
+.critter.bomb::before{content:"";position:absolute;width:16%;height:22%;top:-12%;left:56%;background:#7A6A55;border-radius:3px;transform:rotate(20deg)}
+.critter.bomb::after{content:"";position:absolute;width:18%;height:18%;top:-24%;left:66%;border-radius:50%;background:#FF7A2F;box-shadow:0 0 12px #FFB02F}
+.critter.bomb i{position:absolute;inset:30% 30%;border:4px solid #E2394A;border-radius:50%}
+.critter.bomb i::after{content:"";position:absolute;left:50%;top:-10%;bottom:-10%;width:4px;margin-left:-2px;background:#E2394A;transform:rotate(45deg)}
+.hole.hit .critter{transform:translateY(-4%) scale(1.25);opacity:0;transition:transform .18s,opacity .18s}
+
+/* result */
+.result{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:26px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.result .label{font-size:14px;color:var(--muted);letter-spacing:.06em}
+.result .score{font-family:var(--display);font-size:clamp(48px,12vw,84px);line-height:1}
+.result .grade{font-family:var(--display);font-size:22px;color:var(--accent)}
+.result .sub{color:var(--muted);margin:0}
+.newrec{background:var(--accent);color:var(--accent-ink);padding:4px 14px;border-radius:999px;font-family:var(--display);font-size:17px;animation:pop .4s}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.ghost{border:2px solid var(--line);background:transparent;border-radius:999px;padding:8px 18px;font-family:var(--display);font-size:17px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#fff"/></svg></div>
+      <div><h1>번개손 챌린지</h1><p>순발력 · 반응속도 · 동체시력 훈련 놀이</p></div>
+    </div>
+    <div class="player">
+      <label for="nick">내 이름</label>
+      <input id="nick" maxlength="10" placeholder="이름을 써요" autocomplete="off">
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" style="display:contents">
+    <div class="stations" id="stations"></div>
+  </section>
+
+  <!-- PLAY -->
+  <section id="play" hidden>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="hud">
+        <div class="stats" id="hudStats"></div>
+        <button class="quit" id="quitBtn">그만하기</button>
+      </div>
+      <div class="arena" id="arena"></div>
+    </div>
+  </section>
+
+  <!-- RESULT -->
+  <section id="result" hidden></section>
+
+  <section class="board" aria-labelledby="boardTitle">
+    <div class="board-head">
+      <h2 id="boardTitle">친구들 순위표</h2>
+      <div class="tabs" role="tablist" id="tabs"></div>
+    </div>
+    <p class="note" id="boardNote">순위표를 불러오는 중이에요…</p>
+    <ol class="rank" id="rank"></ol>
+  </section>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+const COLORS = [
+  {id:"red", ko:"빨강", hex:"#F2414B", shape:"circle"},
+  {id:"blue", ko:"파랑", hex:"#2F7BF5", shape:"square"},
+  {id:"yellow", ko:"노랑", hex:"#FFC21A", shape:"star"},
+  {id:"green", ko:"초록", hex:"#22B35E", shape:"triangle"},
+  {id:"purple", ko:"보라", hex:"#9B5CF0", shape:"diamond"},
+];
+
+const ICONS = {
+  react:`<svg viewBox="0 0 54 54" class="ico"><rect x="3" y="3" width="48" height="48" rx="14" fill="#1FA463"/><path d="M29 10 17 30h9l-2 14 13-20h-9z" fill="#fff"/></svg>`,
+  balls:`<svg viewBox="0 0 54 54" class="ico"><rect x="3" y="3" width="48" height="48" rx="14" fill="#2F7BF5" opacity=".16"/><circle cx="18" cy="20" r="9" fill="#F2414B"/><circle cx="36" cy="18" r="7" fill="#FFC21A"/><circle cx="31" cy="36" r="10" fill="#2F7BF5"/><circle cx="31" cy="36" r="13" fill="none" stroke="#FF7A2F" stroke-width="3" stroke-dasharray="4 3"/></svg>`,
+  mole:`<svg viewBox="0 0 54 54" class="ico"><rect x="3" y="3" width="48" height="48" rx="14" fill="#FFC21A" opacity=".22"/><ellipse cx="27" cy="42" rx="18" ry="6" fill="#8C9AB0" opacity=".5"/><circle cx="27" cy="27" r="13" fill="#FFC21A"/><circle cx="22" cy="25" r="2" fill="#1B2A4A"/><circle cx="32" cy="25" r="2" fill="#1B2A4A"/><path d="M22 31q5 4 10 0" stroke="#1B2A4A" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>`
+};
+
+const MODES = {
+  react:{ name:"번개 반응", lowerBetter:true, unit:"ms",
+    desc:"빨간 화면이 초록으로 바뀌는 순간 터치! 5번 재서 평균을 내요.",
+    trains:["반응속도","집중력"] },
+  balls:{ name:"색깔 공 잡기", lowerBetter:false, unit:"점",
+    desc:"날아다니는 공 중에서 정해진 색만 콕! 레벨마다 공이 빨라지고 작아져요.",
+    trains:["동체시력","색 구별","판단력"] },
+  mole:{ name:"반짝 별 잡기", lowerBetter:false, unit:"점",
+    desc:"구멍에서 튀어나온 별을 재빨리 터치! 폭탄은 누르면 안 돼요.",
+    trains:["순발력","억제력"] },
+};
+const MODE_KEYS = Object.keys(MODES);
+const fmt = (mode, v) => mode === "react" ? `${Math.round(v)}ms` : `${Math.round(v).toLocaleString("ko-KR")}점`;
+const better = (mode, a, b) => MODES[mode].lowerBetter ? a < b : a > b;
+
+/* ---------- player name ---------- */
+const nickInput = $("#nick");
+let nick = store.get("bg_nick", "");
+nickInput.value = nick;
+nickInput.addEventListener("input", () => { nick = nickInput.value.trim().slice(0,10); store.set("bg_nick", nick); renderStations(); renderBoard(); });
+function playerKey(name){ let h = 2166136261; for (const c of name) { h ^= c.codePointAt(0); h = Math.imul(h, 16777619); } return "p" + (h >>> 0).toString(36); }
+
+/* ---------- local bests ---------- */
+let localBest = store.get("bg_best", {}); // {playerKey: {name, react:{...}}}
+function myLocalBest(mode){ const p = localBest[playerKey(nick || "나")]; return p && p[mode]; }
+
+/* ---------- stations ---------- */
+function renderStations(){
+  const box = $("#stations"); box.textContent = "";
+  for (const k of MODE_KEYS) {
+    const m = MODES[k];
+    const card = el("div", "station");
+    card.innerHTML = ICONS[k];
+    card.append(el("h3", null, m.name), el("p", null, m.desc));
+    const tr = el("div", "trains"); m.trains.forEach(t => tr.append(el("span", "chip", t))); card.append(tr);
+    const best = myLocalBest(k);
+    const mb = el("div", "mybest"); mb.append(el("span", null, "내 최고 기록"));
+    const b = el("b", "num", best ? fmt(k, best.score) : "—"); mb.append(b); card.append(mb);
+    const go = el("button", "go", "시작하기"); go.addEventListener("click", () => startGame(k)); card.append(go);
+    box.append(card);
+  }
+}
+
+/* ---------- views ---------- */
+function show(view){
+  $("#home").hidden = view !== "home";
+  $("#play").hidden = view !== "play";
+  $("#result").hidden = view !== "result";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ---------- HUD ---------- */
+function hud(items){
+  const box = $("#hudStats"); box.textContent = "";
+  for (const it of items) {
+    if (it.hearts != null) {
+      const h = el("div", "hearts"); h.setAttribute("aria-label", `하트 ${it.hearts}개`);
+      for (let i = 0; i < it.max; i++) { if (i < it.hearts) h.append("♥"); else { const x = el("i", null, "♥"); h.append(x); } }
+      box.append(h);
+    } else if (it.color) {
+      const t = el("div", "target"); const d = el("span", "dot"); d.style.background = it.color.hex;
+      t.append(d, `${it.color.ko} 공만!`); box.append(t);
+    } else {
+      const s = el("div", "stat"); s.append(el("span", null, it.label), el("b", "num", String(it.value))); box.append(s);
+    }
+  }
+}
+function banner(text, small, ms = 1300){
+  const arena = $("#arena");
+  const b = el("div", "banner"); const d = el("div", null, text);
+  if (small) d.append(el("small", null, small));
+  b.append(d); arena.append(b);
+  setTimeout(() => b.remove(), ms);
+}
+
+/* ---------- game control ---------- */
+let current = null; // {mode, stop()}
+$("#quitBtn").addEventListener("click", () => { if (current) { const c = current; current = null; c.stop(); c.finish(true); } });
+function startGame(mode){
+  if (current) current.stop();
+  show("play");
+  const arena = $("#arena"); arena.textContent = "";
+  current = ({react:ReactGame, balls:BallGame, mole:MoleGame})[mode](arena, res => { current = null; endGame(mode, res); });
+}
+
+/* ===== 1. 번개 반응 ===== */
+function ReactGame(arena, done){
+  const ROUNDS = 5; let times = [], timer = null, state = "idle", t0 = 0, alive = true;
+  const pad = el("div", "pad idle"); arena.append(pad);
+  function paint(cls, big, small){
+    pad.className = "pad " + cls; pad.textContent = "";
+    pad.append(el("div", "big", big)); if (small) pad.append(el("div", "small", small));
+    const dots = el("div", "dots"); for (let i = 0; i < ROUNDS; i++) dots.append(el("i", i < times.length ? "on" : ""));
+    pad.append(dots);
+  }
+  function update(){ hud([{label:"라운드", value:`${Math.min(times.length+1,ROUNDS)} / ${ROUNDS}`},{label:"평균", value: times.length ? Math.round(avg())+"ms" : "—"}]); }
+  const avg = () => times.reduce((a,b)=>a+b,0) / times.length;
+  function next(){
+    if (!alive) return;
+    state = "wait"; paint("wait", "기다려…", "초록색으로 바뀌면 바로 터치!"); update();
+    timer = setTimeout(() => { state = "go"; t0 = performance.now(); paint("go", "지금!", ""); }, 1300 + Math.random()*2600);
+  }
+  function tap(e){
+    if (e) e.preventDefault();
+    if (state === "idle") { next(); return; }
+    if (state === "wait") { clearTimeout(timer); state = "pause"; paint("early", "앗, 너무 빨라!", "초록색이 될 때까지 참아요"); setTimeout(next, 1200); return; }
+    if (state === "go") {
+      const ms = performance.now() - t0; times.push(ms); state = "pause";
+      paint("res", `${Math.round(ms)}ms`, grade(ms)); update();
+      if (times.length >= ROUNDS) setTimeout(() => { if (alive) { alive = false; cleanup(); done(finish()); } }, 1100);
+      else setTimeout(next, 1000);
+    }
+  }
+  function finish(quit){ return { score: avg(), level: Math.round(Math.min(...times)), extra:`최고 ${Math.round(Math.min(...times))}ms`, quit }; }
+  function key(e){ if (e.code === "Space" || e.code === "Enter") tap(e); }
+  pad.addEventListener("pointerdown", tap); window.addEventListener("keydown", key);
+  function cleanup(){ clearTimeout(timer); window.removeEventListener("keydown", key); }
+  paint("idle", "준비됐나요?", "화면을 눌러서 시작 (키보드는 스페이스)"); update();
+  return { stop(){ alive = false; cleanup(); }, finish(q){ done(times.length ? finish(true) : {quit:true, score:null}); } };
+}
+function grade(ms){
+  if (ms < 230) return "⚡ 번개급!"; if (ms < 300) return "치타처럼 빨라요!";
+  if (ms < 380) return "토끼처럼 잽싸요!"; if (ms < 480) return "좋아요, 조금만 더!"; return "거북이도 연습하면 빨라져요";
+}
+
+/* ===== 2. 색깔 공 잡기 ===== */
+function BallGame(arena, done){
+  const cv = el("canvas"); arena.append(cv); const ctx = cv.getContext("2d");
+  let W = 0, H = 0, dpr = 1;
+  function resize(){ dpr = Math.min(2, window.devicePixelRatio || 1); W = arena.clientWidth; H = arena.clientHeight; cv.width = W*dpr; cv.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); }
+  resize(); const ro = new ResizeObserver(resize); ro.observe(arena);
+  const MAXH = 5, PER_LEVEL = 8;
+  const g = { level:1, score:0, hearts:MAXH, hits:0, combo:0, balls:[], fx:[], target:COLORS[0], pauseUntil:0, lastSpawn:0, last:0, alive:true };
+  const activeCount = () => Math.min(5, 2 + Math.floor(g.level/2));
+  const scale = () => Math.max(.7, Math.min(1.3, Math.min(W,H)/480));
+  function pickTarget(){ const pool = COLORS.slice(0, activeCount()).filter(c => c !== g.target); g.target = pool[Math.floor(Math.random()*pool.length)]; }
+  function upd(){ hud([{color:g.target},{label:"레벨", value:g.level},{label:"점수", value:g.score},{hearts:g.hearts, max:MAXH}]); }
+  function spawn(){
+    const s = scale();
+    const r = Math.max(15, 40 - g.level*2.4) * s;
+    const isT = Math.random() < .42;
+    const pool = COLORS.slice(0, activeCount()).filter(c => c !== g.target);
+    const color = isT ? g.target : pool[Math.floor(Math.random()*pool.length)];
+    const edge = Math.floor(Math.random()*4);
+    let x, y;
+    if (edge === 0) { x = Math.random()*W; y = -r; } else if (edge === 1) { x = W + r; y = Math.random()*H; }
+    else if (edge === 2) { x = Math.random()*W; y = H + r; } else { x = -r; y = Math.random()*H; }
+    const tx = W*(.25 + Math.random()*.5), ty = H*(.25 + Math.random()*.5);
+    const sp = (85 + g.level*24) * s * (.8 + Math.random()*.4);
+    const d = Math.hypot(tx-x, ty-y) || 1;
+    g.balls.push({x, y, vx:(tx-x)/d*sp, vy:(ty-y)/d*sp, r, color, born:performance.now(), wob:Math.random()*6});
+  }
+  function shape(c, x, y, r){
+    ctx.fillStyle = "rgba(255,255,255,.9)"; const k = r*.38; ctx.beginPath();
+    if (c.shape === "circle") ctx.arc(x, y, k*.8, 0, 7);
+    else if (c.shape === "square") ctx.rect(x-k*.75, y-k*.75, k*1.5, k*1.5);
+    else if (c.shape === "triangle") { ctx.moveTo(x, y-k); ctx.lineTo(x+k*.95, y+k*.7); ctx.lineTo(x-k*.95, y+k*.7); ctx.closePath(); }
+    else if (c.shape === "diamond") { ctx.moveTo(x, y-k); ctx.lineTo(x+k*.8, y); ctx.lineTo(x, y+k); ctx.lineTo(x-k*.8, y); ctx.closePath(); }
+    else { for (let i = 0; i < 10; i++) { const a = -Math.PI/2 + i*Math.PI/5, rr = i%2 ? k*.45 : k; ctx.lineTo(x+Math.cos(a)*rr, y+Math.sin(a)*rr); } ctx.closePath(); }
+    ctx.fill();
+  }
+  function lose(){ g.hearts--; g.combo = 0; arena.classList.remove("shake"); void arena.offsetWidth; arena.classList.add("shake"); upd(); if (g.hearts <= 0) end(); }
+  function levelUp(){
+    g.level++; g.hits = 0; g.balls = []; pickTarget(); g.pauseUntil = performance.now() + 1500; upd();
+    banner(`레벨 ${g.level}!`, `이번엔 ${g.target.ko} 공만 잡아요`, 1500);
+  }
+  function frame(t){
+    if (!g.alive) return;
+    const dt = Math.min(.05, (t - (g.last || t))/1000); g.last = t;
+    const paused = t < g.pauseUntil;
+    const gap = Math.max(260, 900 - g.level*60);
+    if (!paused && t - g.lastSpawn > gap) { spawn(); g.lastSpawn = t; }
+    for (const b of g.balls) { b.x += b.vx*dt; b.y += b.vy*dt; }
+    const keep = [];
+    for (const b of g.balls) {
+      const out = b.x < -b.r*2 || b.x > W + b.r*2 || b.y < -b.r*2 || b.y > H + b.r*2;
+      if (out && t - b.born > 600) { if (b.color === g.target) { g.fx.push({x:Math.max(20,Math.min(W-20,b.x)), y:Math.max(20,Math.min(H-20,b.y)), t, txt:"놓쳤다!", c:"bad"}); lose(); if (!g.alive) return; } }
+      else keep.push(b);
+    }
+    g.balls = keep;
+    ctx.clearRect(0, 0, W, H);
+    for (const b of g.balls) {
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fillStyle = b.color.hex; ctx.fill();
+      ctx.beginPath(); ctx.arc(b.x - b.r*.35, b.y - b.r*.35, b.r*.22, 0, 7); ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fill();
+      shape(b.color, b.x, b.y + b.r*.08, b.r);
+    }
+    const css = getComputedStyle(document.documentElement);
+    g.fx = g.fx.filter(f => t - f.t < 700);
+    for (const f of g.fx) {
+      const p = (t - f.t)/700;
+      if (f.ring) { ctx.beginPath(); ctx.arc(f.x, f.y, f.r*(1+p*.8), 0, 7); ctx.strokeStyle = f.ring; ctx.globalAlpha = 1-p; ctx.lineWidth = 4; ctx.stroke(); ctx.globalAlpha = 1; }
+      if (f.txt) { ctx.globalAlpha = 1-p; ctx.fillStyle = css.getPropertyValue(f.c === "bad" ? "--bad" : "--good"); ctx.font = `22px ${css.getPropertyValue("--display")}`; ctx.textAlign = "center"; ctx.fillText(f.txt, f.x, f.y - 20 - p*30); ctx.globalAlpha = 1; }
+    }
+    requestAnimationFrame(frame);
+  }
+  function tap(e){
+    e.preventDefault();
+    if (!g.alive || performance.now() < g.pauseUntil) return;
+    const rect = cv.getBoundingClientRect(); const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    for (let i = g.balls.length - 1; i >= 0; i--) {
+      const b = g.balls[i];
+      if (Math.hypot(b.x - x, b.y - y) <= b.r + 8) {
+        g.balls.splice(i, 1); const t = performance.now();
+        if (b.color === g.target) {
+          g.combo++; const pts = 10*g.level + Math.min(30, (g.combo-1)*5); g.score += pts; g.hits++;
+          g.fx.push({x:b.x, y:b.y, r:b.r, t, ring:b.color.hex, txt:`+${pts}`});
+          if (g.hits >= PER_LEVEL) levelUp(); else upd();
+        } else { g.fx.push({x:b.x, y:b.y, r:b.r, t, ring:"#888", txt:"다른 색!", c:"bad"}); lose(); }
+        return;
+      }
+    }
+  }
+  cv.addEventListener("pointerdown", tap);
+  function end(){ g.alive = false; ro.disconnect(); done(result()); }
+  function result(quit){ return { score:g.score, level:g.level, extra:`레벨 ${g.level}`, quit }; }
+  g.target = COLORS[Math.floor(Math.random()*2)]; upd();
+  g.pauseUntil = performance.now() + 1600;
+  banner(`${g.target.ko} 공만 잡아요!`, "다른 색을 누르거나 놓치면 하트가 줄어요", 1600);
+  requestAnimationFrame(frame);
+  return { stop(){ g.alive = false; ro.disconnect(); }, finish(){ done(result(true)); } };
+}
+
+/* ===== 3. 반짝 별 잡기 ===== */
+function MoleGame(arena, done){
+  const grid = el("div", "molegrid"); arena.append(grid);
+  const MAXH = 5, PER_LEVEL = 7;
+  const g = { level:1, score:0, hearts:MAXH, hits:0, alive:true, timers:new Set() };
+  const holes = [];
+  for (let i = 0; i < 9; i++) {
+    const h = el("button", "hole"); h.setAttribute("aria-label", `구멍 ${i+1}`);
+    const c = el("div", "critter"); c.append(el("i")); h.append(c); grid.append(h);
+    const hole = { btn:h, critter:c, item:null };
+    h.addEventListener("pointerdown", e => { e.preventDefault(); whack(hole); });
+    holes.push(hole);
+  }
+  const later = (fn, ms) => { const id = setTimeout(() => { g.timers.delete(id); if (g.alive) fn(); }, ms); g.timers.add(id); return id; };
+  function upd(){ hud([{label:"레벨", value:g.level},{label:"점수", value:g.score},{hearts:g.hearts, max:MAXH}]); }
+  const windowMs = () => Math.max(420, 1200 - g.level*80);
+  function pop(){
+    const free = holes.filter(h => !h.item); if (!free.length) return;
+    const h = free[Math.floor(Math.random()*free.length)];
+    const bomb = g.level >= 3 && Math.random() < Math.min(.35, .12 + g.level*.03);
+    h.item = { bomb, t:performance.now() };
+    h.btn.classList.remove("hit"); h.critter.className = "critter " + (bomb ? "bomb" : "star"); h.btn.classList.add("up");
+    h.item.timer = later(() => { const wasStar = h.item && !h.item.bomb; down(h); if (wasStar) miss(); }, windowMs() * (bomb ? 1.3 : 1));
+  }
+  function down(h){ if (h.item) clearTimeout(h.item.timer); h.item = null; h.btn.classList.remove("up"); }
+  function miss(){ g.hearts--; arena.classList.remove("shake"); void arena.offsetWidth; arena.classList.add("shake"); upd(); if (g.hearts <= 0) end(); }
+  function whack(h){
+    if (!g.alive || !h.item) return;
+    const it = h.item; down(h); h.btn.classList.add("hit");
+    if (it.bomb) { miss(); return; }
+    const rt = performance.now() - it.t;
+    g.score += 10*g.level + Math.max(0, Math.round((windowMs() - rt)/40)); g.hits++;
+    if (g.hits >= PER_LEVEL) { g.level++; g.hits = 0; banner(`레벨 ${g.level}!`, g.level === 3 ? "이제 폭탄이 나와요. 폭탄은 누르지 마요!" : "더 빨라져요!", 1300); }
+    upd();
+  }
+  function loop(){
+    if (!g.alive) return;
+    pop();
+    if (g.level >= 4 && Math.random() < .35) later(pop, 160);
+    later(loop, Math.max(320, 850 - g.level*55) + Math.random()*250);
+  }
+  function stopAll(){ g.alive = false; g.timers.forEach(clearTimeout); g.timers.clear(); }
+  function end(){ stopAll(); done(result()); }
+  function result(quit){ return { score:g.score, level:g.level, extra:`레벨 ${g.level}`, quit }; }
+  upd(); banner("별을 잡아요!", "웃는 별만 터치, 폭탄은 피하기", 1500);
+  later(loop, 1500);
+  return { stop: stopAll, finish(){ done(result(true)); } };
+}
+
+/* ---------- result & saving ---------- */
+async function endGame(mode, res){
+  const box = $("#result"); box.textContent = ""; show("result");
+  const card = el("div", "result");
+  if (res.score == null) { card.append(el("p", "sub", "기록이 없어요. 다시 해볼까요?")); }
+  else {
+    card.append(el("span", "label", MODES[mode].name + (mode === "react" ? " · 평균 반응속도" : " · 점수")));
+    card.append(el("div", "score num", fmt(mode, res.score)));
+    card.append(el("div", "grade", mode === "react" ? grade(res.score) : res.extra));
+    if (mode === "react") card.append(el("p", "sub", res.extra));
+  }
+  const status = el("p", "sub"); card.append(status);
+  const act = el("div", "actions");
+  const again = el("button", "go", "한 번 더!"); again.addEventListener("click", () => startGame(mode));
+  const home = el("button", "ghost", "처음으로"); home.addEventListener("click", () => show("home"));
+  act.append(again, home); card.append(act); box.append(card);
+  again.focus({preventScroll:true});
+  setTab(mode);
+  if (res.score == null || (mode === "react" && res.quit)) { if (res.quit && mode === "react" && res.score != null) status.textContent = "5번을 다 해야 기록이 저장돼요."; return; }
+  if (!nick) { status.textContent = "위에 이름을 쓰면 다음부터 순위표에 올라가요!"; }
+  const name = nick || "나";
+  const rec = { score: Math.round(res.score), level: res.level, at: Date.now() };
+  const pk = playerKey(name);
+  const prev = localBest[pk] && localBest[pk][mode];
+  let isNew = !prev || better(mode, rec.score, prev.score);
+  if (isNew) { localBest[pk] = { ...(localBest[pk] || {}), name, [mode]: rec }; store.set("bg_best", localBest); renderStations(); }
+  if (!nick) return;
+  const sharedPrev = myDocData()?.players?.[pk]?.[mode];
+  const sharedNew = !sharedPrev || better(mode, rec.score, sharedPrev.score);
+  if (isNew || sharedNew) card.insertBefore(el("span", "newrec", "새 최고 기록!"), card.firstChild);
+  if (!sharedNew) { status.textContent = `${name}의 최고 기록은 ${fmt(mode, sharedPrev ? sharedPrev.score : prev.score)}이에요.`; return; }
+  status.textContent = "순위표에 저장하는 중…";
+  const r = await saveShared(pk, name, mode, rec);
+  status.textContent = r === "ok" ? "순위표에 올라갔어요!" : r === "readonly" ? "이 화면에선 기록을 볼 수만 있어요. 내 기기에는 저장했어요." : "순위표에 연결되지 않아 내 기기에만 저장했어요.";
+}
+
+/* ---------- shared leaderboard (db) ---------- */
+let db = null, uid = null, canWrite = true, docs = new Map(), boardState = "loading";
+let writeChain = Promise.resolve();
+const myDocData = () => uid ? docs.get(uid) : null;
+function saveShared(pk, name, mode, rec){
+  if (!db || !uid) return Promise.resolve("offline");
+  if (!canWrite) return Promise.resolve("readonly");
+  const job = writeChain.then(async () => {
+    const ref = db.doc("runs/" + uid);
+    const body = { players: { [pk]: { name, [mode]: rec } } };
+    try {
+      if (docs.has(uid)) await ref.update(body); else await ref.set(body);
+      return "ok";
+    } catch (e) {
+      if (e && (e.code === "invalid_argument")) { canWrite = false; renderBoard(); return "readonly"; }
+      if (e && e.code === "unavailable") { await new Promise(r => setTimeout(r, 600 + Math.random()*600)); try { if (docs.has(uid)) await ref.update(body); else await ref.set(body); return "ok"; } catch {} }
+      return "offline";
+    }
+  });
+  writeChain = job.catch(() => {});
+  return job;
+}
+
+let tab = "balls";
+function setTab(m){ tab = m; renderTabs(); renderBoard(); }
+function renderTabs(){
+  const t = $("#tabs"); t.textContent = "";
+  for (const k of MODE_KEYS) {
+    const b = el("button", "tab", MODES[k].name); b.setAttribute("role", "tab"); b.setAttribute("aria-selected", String(k === tab));
+    b.addEventListener("click", () => setTab(k)); t.append(b);
+  }
+}
+function renderBoard(){
+  const list = $("#rank"), note = $("#boardNote"); list.textContent = "";
+  let rows = [];
+  if (db && boardState !== "error") {
+    for (const [id, d] of docs) for (const [pk, p] of Object.entries((d && d.players) || {})) {
+      const r = p && p[tab];
+      if (r && typeof r.score === "number" && typeof p.name === "string") rows.push({ name:p.name.slice(0,10), score:r.score, level:r.level, at:r.at, me: id === uid && p.name === nick });
+    }
+  } else {
+    for (const p of Object.values(localBest)) { const r = p[tab]; if (r) rows.push({ name:p.name, score:r.score, level:r.level, at:r.at, me:p.name === nick }); }
+  }
+  rows.sort((a, b) => MODES[tab].lowerBetter ? a.score - b.score : b.score - a.score);
+  rows = rows.slice(0, 20);
+  const msg = {
+    loading: "순위표를 불러오는 중이에요…",
+    slow: "순위표에 아직 연결되지 않았어요. 잠시 뒤에 다시 보여 줄게요.",
+    error: "순위표에 연결할 수 없어서 이 기기의 기록만 보여 줘요.",
+    local: "이 화면에선 친구 순위표를 쓸 수 없어서, 이 기기의 기록만 보여 줘요.",
+    live: canWrite ? `${MODES[tab].lowerBetter ? "평균 반응속도가 빠른 순" : "점수가 높은 순"}이에요. 이름별 최고 기록만 올라가요.` : "볼 수만 있는 권한이에요. 기록을 올리려면 주인에게 ‘참여자’ 권한을 받아요.",
+  };
+  note.textContent = msg[boardState] || "";
+  if (!rows.length) { const e = el("li", "empty", boardState === "loading" ? "잠깐만요…" : `아직 ${MODES[tab].name} 기록이 없어요. 첫 번째 주인공이 되어 보세요!`); e.style.display = "block"; list.append(e); return; }
+  rows.forEach((r, i) => {
+    const li = el("li", r.me ? "me" : "");
+    li.append(el("span", "pos num", String(i + 1)));
+    const who = el("span", "who", r.name);
+    if (tab !== "react" && r.level) who.append(el("small", null, `Lv.${r.level}`));
+    if (tab === "react" && r.level) who.append(el("small", null, `최고 ${r.level}ms`));
+    li.append(who, el("span", "val num", fmt(tab, r.score)));
+    list.append(li);
+  });
+}
+
+async function connect(){
+  if (!window.claude || !window.claude.use) { boardState = "local"; renderBoard(); return; }
+  const [dbNs, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+  if (!dbNs || !user) { boardState = "local"; renderBoard(); return; }
+  uid = await user.id();
+  db = dbNs;
+  try { const w = await user.can("data.write"); if (w === false) canWrite = false; } catch {}
+  let timer = setTimeout(() => { if (boardState === "loading") { boardState = "slow"; renderBoard(); } }, 10000);
+  db.collection("runs").onSnapshot(snap => {
+    docs = new Map(snap.docs.filter(d => d.exists).map(d => [d.id, d.data()]));
+    if (!snap.metadata.fromCache) { clearTimeout(timer); boardState = "live"; }
+    else if (boardState === "loading") boardState = "live";
+    renderBoard();
+  }, () => { clearTimeout(timer); boardState = "error"; db = null; renderBoard(); });
+}
+
+renderStations(); renderTabs(); renderBoard(); show("home");
+connect().catch(() => { boardState = "local"; renderBoard(); });
+})();
+</script>
