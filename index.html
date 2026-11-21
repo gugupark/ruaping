@@ -1,4 +1,7 @@
-<title>번개손 챌린지</title>
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>루아핑</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +26,10 @@
   --react-wait:#C93445; --react-go:#1E9C5C; color-scheme:dark}
 
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body.playing{overflow:hidden}
+body{margin:0;-webkit-tap-highlight-color:transparent;touch-action:manipulation;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.55;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
 .wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
 h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
@@ -83,7 +89,10 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
 .target{display:flex;align-items:center;gap:8px;background:var(--panel);border:2px solid var(--line);border-radius:999px;padding:4px 14px 4px 6px;font-family:var(--display);font-size:18px}
 .target .dot{width:28px;height:28px;border-radius:50%}
 .quit{border:2px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 14px;font-size:14px}
-.arena{position:relative;width:100%;height:min(66vh,600px);min-height:340px;background:var(--arena);border:2px solid var(--line);border-radius:var(--r);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+.playview{position:fixed;inset:0;z-index:30;background:var(--bg);display:flex;flex-direction:column;gap:10px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px))}
+.playview > *{width:100%;max-width:980px;margin:0 auto}
+.arena{position:relative;flex:1;min-height:0;background:var(--arena);border:2px solid var(--line);border-radius:var(--r);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 .arena canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .banner{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;text-align:center;padding:16px}
 .banner div{background:var(--panel);border:2px solid var(--line);border-radius:var(--r);padding:16px 24px;font-family:var(--display);font-size:clamp(22px,5vw,34px);box-shadow:0 10px 30px rgba(0,0,0,.12);animation:pop .35s ease-out}
@@ -93,7 +102,7 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
 @keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
 
 .pad{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#fff;font-family:var(--display);text-align:center;padding:20px;transition:background .08s}
-.pad.idle{background:var(--muted)}.pad.wait{background:var(--react-wait)}.pad.go{background:var(--react-go)}.pad.early{background:#E89A1B}.pad.res{background:#2F7BF5}
+.pad.s-idle{background:var(--muted)}.pad.s-wait{background:var(--react-wait)}.pad.s-go{background:var(--react-go)}.pad.s-early{background:#E89A1B}.pad.s-res{background:#2F7BF5}
 .pad .big{font-size:clamp(34px,8vw,64px);line-height:1.1}
 .pad .small{font-family:var(--body);font-size:17px;opacity:.92}
 .pad .dots{display:flex;gap:8px;margin-top:10px}
@@ -126,6 +135,34 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
 .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px}
 .ghost{border:2px solid var(--line);background:transparent;border-radius:999px;padding:8px 18px;font-family:var(--display);font-size:17px}
 
+/* phone */
+@media (max-width:560px){
+  body{padding-block:14px 28px}
+  .wrap{gap:16px}
+  header{flex-direction:column;align-items:stretch}
+  .brand h1{font-size:28px}
+  .player{width:100%}
+  .player input{flex:1;width:auto}
+  .station{padding:14px;gap:8px}
+  .station h3{font-size:20px}
+  .station .ico{width:44px;height:44px}
+  .go{align-self:stretch;text-align:center;padding:11px 18px;font-size:18px}
+  .board{padding:14px}
+  .board-head h2{font-size:21px}
+  .tabs{width:100%}
+  .tab{flex:1;padding:6px 8px;font-size:13px}
+  .rank li{grid-template-columns:32px minmax(0,1fr) auto;padding:8px 10px}
+  .hud{gap:8px}
+  .hud .stats{gap:12px}
+  .stat b{font-size:20px}
+  .hearts{font-size:18px;letter-spacing:1px}
+  .target{font-size:16px;padding:3px 12px 3px 4px}
+  .target .dot{width:24px;height:24px}
+  .quit{padding:5px 12px;font-size:13px}
+  .result{padding:22px 14px}
+  .actions{width:100%}
+  .actions button{flex:1}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -133,7 +170,7 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
   <header>
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z" fill="#fff"/></svg></div>
-      <div><h1>번개손 챌린지</h1><p>순발력 · 반응속도 · 동체시력 훈련 놀이</p></div>
+      <div><h1>루아핑</h1><p>순발력 · 반응속도 · 동체시력 훈련 놀이</p></div>
     </div>
     <div class="player">
       <label for="nick">내 이름</label>
@@ -147,14 +184,12 @@ header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-betw
   </section>
 
   <!-- PLAY -->
-  <section id="play" hidden>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="hud">
-        <div class="stats" id="hudStats"></div>
-        <button class="quit" id="quitBtn">그만하기</button>
-      </div>
-      <div class="arena" id="arena"></div>
+  <section id="play" class="playview" hidden>
+    <div class="hud">
+      <div class="stats" id="hudStats"></div>
+      <button class="quit" id="quitBtn">그만하기</button>
     </div>
+    <div class="arena" id="arena"></div>
   </section>
 
   <!-- RESULT -->
@@ -242,6 +277,7 @@ function show(view){
   $("#home").hidden = view !== "home";
   $("#play").hidden = view !== "play";
   $("#result").hidden = view !== "result";
+  document.body.classList.toggle("playing", view === "play");
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
@@ -282,9 +318,9 @@ function startGame(mode){
 /* ===== 1. 번개 반응 ===== */
 function ReactGame(arena, done){
   const ROUNDS = 5; let times = [], timer = null, state = "idle", t0 = 0, alive = true;
-  const pad = el("div", "pad idle"); arena.append(pad);
+  const pad = el("div", "pad s-idle"); arena.append(pad);
   function paint(cls, big, small){
-    pad.className = "pad " + cls; pad.textContent = "";
+    pad.className = "pad s-" + cls; pad.textContent = "";
     pad.append(el("div", "big", big)); if (small) pad.append(el("div", "small", small));
     const dots = el("div", "dots"); for (let i = 0; i < ROUNDS; i++) dots.append(el("i", i < times.length ? "on" : ""));
     pad.append(dots);
